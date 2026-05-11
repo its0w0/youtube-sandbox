@@ -32,41 +32,42 @@ jobs:
           echo "Commit message:"
           echo "$MSG"
           echo "----------------------------------------"
-
-          URL=$(echo "$MSG" | grep -oP '(https?://\S+)' | head -n1)
+      
+          # FIXED: Use sed instead of grep -P
+          URL=$(echo "$MSG" | grep -oE 'https?://[^[:space:]]+' | head -n1)
           if [ -z "$URL" ]; then
             echo "❌ No URL found in commit message"
             exit 1
           fi
-
+      
           echo "📥 URL: $URL"
-
-          # Default options (same as before)
+      
+          # Default options
           QUALITY="best"
           PLAYLIST="--no-playlist"
           AUDIO_ONLY="false"
           SUBTITLES="false"
           SPONSORBLOCK="true"
-
+      
           if echo "$MSG" | grep -qi "quality: *1080"; then QUALITY="1080"; fi
           if echo "$MSG" | grep -qi "quality: *720";  then QUALITY="720"; fi
           if echo "$MSG" | grep -qi "quality: *480";  then QUALITY="480"; fi
-
+      
           if echo "$MSG" | grep -qi "playlist: *true";      then PLAYLIST="--yes-playlist"; fi
           if echo "$MSG" | grep -qi "audio-only: *true";    then AUDIO_ONLY="true"; fi
           if echo "$MSG" | grep -qi "subtitles: *true";     then SUBTITLES="true"; fi
           if echo "$MSG" | grep -qi "sponsorblock: *false"; then SPONSORBLOCK="false"; fi
-
+      
           mkdir -p downloads
-
+      
           echo "⚙️ Options: Quality=$QUALITY | Playlist=${PLAYLIST/--no-playlist/Disabled} | Audio=$AUDIO_ONLY"
-
+      
           YT_CMD="yt-dlp \
             --concurrent-fragments 8 \
             --retries 10 \
             --fragment-retries 10 \
             --cookies ~/.cache/yt-dlp/youtube/cookies.txt"
-
+      
           if [ "$AUDIO_ONLY" = "true" ]; then
             YT_CMD="$YT_CMD -x --audio-format mp3 --audio-quality 0"
           else
@@ -78,23 +79,22 @@ jobs:
             esac
             YT_CMD="$YT_CMD --merge-output-format mp4"
           fi
-
+      
           if [ "$PLAYLIST" = "--yes-playlist" ]; then
             YT_CMD="$YT_CMD --yes-playlist"
           else
             YT_CMD="$YT_CMD --no-playlist"
           fi
-
-         
+      
           [ "$SUBTITLES" = "true" ] && YT_CMD="$YT_CMD --write-auto-sub --embed-subs"
           [ "$SPONSORBLOCK" = "true" ] && YT_CMD="$YT_CMD --sponsorblock-remove all"
-
+      
           YT_CMD="$YT_CMD --embed-metadata --embed-thumbnail --embed-chapters --restrict-filenames"
           YT_CMD="$YT_CMD --output 'downloads/%(title)s [%(id)s].%(ext)s'"
-
+      
           echo "🚀 Running yt-dlp..."
           eval "$YT_CMD \"$URL\""
-
+      
           echo "✅ Download finished"
           
       - name: Split large files into 90MB chunks
